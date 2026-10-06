@@ -1,0 +1,100 @@
+### Тестовые запросы. Открыть в IntelliJ IDEA / VS Code (расширение REST Client)
+### и нажимать зелёную стрелку слева от запроса. Выполнять ПО ПОРЯДКУ сверху вниз.
+### В срок (deadline) подставь дату НЕ раньше сегодняшней.
+
+### 1. Создать пользователя -> 201
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{ "username": "ivan", "fullName": "Иван Петров", "email": "ivan@mail.ru" }
+
+### 2. Создать городской объект -> 201
+POST http://localhost:8080/api/city-objects
+Content-Type: application/json
+
+{ "address": "ул. Ленина, 1", "type": "ROAD", "state": "NEEDS_REPAIR" }
+
+### 3. Создать обращение -> 201, status = NEW
+POST http://localhost:8080/api/city-reports
+Content-Type: application/json
+
+{ "objectId": 1, "authorId": 1, "description": "Яма на проезжей части" }
+
+### 4. Создать бригаду -> 201
+POST http://localhost:8080/api/work-crews
+Content-Type: application/json
+
+{ "name": "Дорожники", "supportedTypes": ["ROAD", "SIDEWALK"], "activeWorkLimit": 1 }
+
+### 5. Создать наряд -> 201, status = PLANNED, обращение станет IN_PROGRESS
+POST http://localhost:8080/api/work-orders
+Content-Type: application/json
+
+{ "reportId": 1, "crewId": 1, "deadline": "2026-12-31" }
+
+### 6. Получить все наряды -> 200, массив
+GET http://localhost:8080/api/work-orders
+
+### 7. Получить обращение по id -> 200 (status = IN_PROGRESS)
+GET http://localhost:8080/api/city-reports/1
+
+### 8. Завершить наряд -> 200, status = DONE, completedAt проставлен сервером
+PATCH http://localhost:8080/api/work-orders/1
+Content-Type: application/json
+
+{ "status": "DONE", "resultDescription": "Яма заделана асфальтом" }
+
+### 9. Обращение стало RESOLVED -> 200
+GET http://localhost:8080/api/city-reports/1
+
+### ===== ПРОВЕРКИ БЕЗОПАСНОСТИ =====
+
+### 10. Попытка подсунуть id и createdAt (mass assignment) -> 400
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{ "id": 999, "username": "hacker", "fullName": "X", "email": "x@x.ru", "createdAt": "2000-01-01T00:00:00Z" }
+
+### 11. Пустые / неверные поля -> 400 со списком ошибок
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{ "username": "a b<script>", "fullName": "", "email": "not-an-email" }
+
+### 12. Несуществующий тип объекта -> 400
+POST http://localhost:8080/api/city-objects
+Content-Type: application/json
+
+{ "address": "ул. Мира, 5", "type": "SPACESHIP", "state": "GOOD" }
+
+### 13. Срок в прошлом -> 400
+POST http://localhost:8080/api/work-orders
+Content-Type: application/json
+
+{ "reportId": 1, "crewId": 1, "deadline": "2020-01-01" }
+
+### 14. Изменение закрытого наряда -> 409
+PATCH http://localhost:8080/api/work-orders/1
+Content-Type: application/json
+
+{ "status": "IN_PROGRESS" }
+
+### 15. Нечисловой id -> 400 (без стек-трейса)
+GET http://localhost:8080/api/users/abc
+
+### 16. Несуществующий id -> 404
+GET http://localhost:8080/api/users/12345
+
+### ===== КАСКАДНОЕ УДАЛЕНИЕ =====
+
+### 17. Удалить пользователя -> 204
+DELETE http://localhost:8080/api/users/1
+
+### 18. Его обращения удалены -> 200, []
+GET http://localhost:8080/api/city-reports
+
+### 19. Наряды по этим обращениям удалены -> 200, []
+GET http://localhost:8080/api/work-orders
+
+### 20. Пользователь удалён -> 404
+GET http://localhost:8080/api/users/1
